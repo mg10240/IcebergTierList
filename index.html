@@ -23,7 +23,6 @@
       height: 100%;
       background-size: cover;
       background-position: center;
-      background-color: #2a2a2a; /* Fallback color */
       z-index: -1;
       transition: filter 0.3s;
     }
@@ -76,10 +75,10 @@
       text-orientation: mixed;
       margin-right: 10px;
       padding: 5px;
-      cursor: move;
       font-size: 1rem;
       background: #333;
       border-radius: 6px;
+      user-select: none;
     }
     .tier-actions {
       position: absolute;
@@ -99,6 +98,7 @@
       border-radius: 6px;
       position: relative;
       transition: transform 0.2s;
+      cursor: move;
     }
     .image-box:hover {
       transform: scale(1.1);
@@ -210,15 +210,12 @@
   <button id="menuToggle" onclick="toggleMenu()">☰</button>
   <div id="controls">
     <label><input type="file" id="uploadImage" accept="image/*" multiple style="display:none;"/>📤 Upload Images</label>
-    <button onclick="document.getElementById('uploadImage').click()">📤</button>
     <button onclick="addTier()">➕ Add Tier</button>
     <button onclick="toggleTheme()">🎨 Theme</button>
     <button onclick="toggleBlur()">🌀 Blur Background</button>
     <label><input type="file" id="uploadBackground" accept="image/*" style="display:none;"/>🌄 Background</label>
-    <button onclick="document.getElementById('uploadBackground').click()">🌄</button>
     <button onclick="saveData()">💾 Save JSON</button>
     <button onclick="loadData()">📂 Load JSON</button>
-    <button onclick="exportURL()">🔗 Share URL</button>
     <button onclick="exportPNG()">🖼️ PNG</button>
     <button onclick="exportPDF()">📄 PDF</button>
     <input type="file" id="loadFile" accept="application/json" style="display:none;">
@@ -250,11 +247,18 @@
       const tier = document.createElement("div");
       tier.className = "tier";
       tier.dataset.color = color;
+
       const label = document.createElement("div");
       label.className = "tier-label";
-      label.contentEditable = true;
       label.innerText = name;
       tier.appendChild(label);
+
+      const tierContent = document.createElement("div");
+      tierContent.className = "tier-content";
+      tierContent.style.display = "flex";
+      tierContent.style.flex = "1";
+      tierContent.style.overflowX = "auto";
+      tier.appendChild(tierContent);
 
       const tierActions = document.createElement("div");
       tierActions.className = "tier-actions";
@@ -262,15 +266,18 @@
       tier.appendChild(tierActions);
 
       tierList.appendChild(tier);
-      new Sortable(tier, {
+      new Sortable(tierContent, {
         group: "shared",
         animation: 150,
         ghostClass: "sortable-ghost",
+        filter: ".tier-label, .tier-actions",
         onEnd: saveToURL
       });
       new Sortable(tierList, {
         handle: ".tier-label",
         animation: 150,
+        ghostClass: "sortable-ghost",
+        filter: ".tier-content, .tier-actions",
         onEnd: saveToURL
       });
       saveToURL();
@@ -287,7 +294,9 @@
           imageBox.style.backgroundImage = `url(${e.target.result})`;
           imageBox.dataset.src = e.target.result;
           imageBox.onclick = () => openModal(imageBox);
-          const lastTier = document.querySelector(".tier:last-child") || document.querySelector(".tier") || addTier();
+          const lastTier = document.querySelector(".tier:last-child .tier-content") || 
+                          document.querySelector(".tier .tier-content") || 
+                          (addTier(), document.querySelector(".tier:last-child .tier-content"));
           lastTier.appendChild(imageBox);
           saveToURL();
         };
@@ -300,7 +309,9 @@
       if (!file) return;
       const reader = new FileReader();
       reader.onload = function(e) {
-        document.getElementById("background").style.backgroundImage = `url(${e.target.result})`;
+        const bgDiv = document.getElementById("background");
+        bgDiv.style.backgroundImage = `url(${e.target.result})`;
+        bgDiv.style.backgroundColor = 'transparent'; // Ensure no color override
         saveToURL();
       };
       reader.readAsDataURL(file);
@@ -330,9 +341,11 @@
       document.body.classList.toggle("light-theme");
       const isLight = document.body.classList.contains("light-theme");
       document.body.style.backgroundColor = isLight ? "#f0f0f0" : "#1a1a1a";
-      document.getElementById("background").style.backgroundColor = isLight ? "#fff" : "#2a2a2a";
       document.querySelectorAll(".tier").forEach(tier => {
         tier.style.background = isLight ? "rgba(0, 0, 0, 0.1)" : "rgba(255, 255, 255, 0.15)";
+      });
+      document.querySelectorAll(".tier-label").forEach(label => {
+        label.style.background = isLight ? "#ddd" : "#333";
       });
     }
 
@@ -398,7 +411,7 @@
       document.getElementById("tierlist").innerHTML = "";
       data.tiers.forEach(t => {
         addTier(t.label, t.color);
-        const lastTier = document.querySelector(".tier:last-child");
+        const lastTierContent = document.querySelector(".tier:last-child .tier-content");
         t.images.forEach(i => {
           const box = document.createElement("div");
           box.className = "image-box";
@@ -407,11 +420,13 @@
           box.dataset.title = i.title;
           box.dataset.desc = i.desc;
           box.onclick = () => openModal(box);
-          lastTier.appendChild(box);
+          lastTierContent.appendChild(box);
         });
       });
       if (data.background) {
-        document.getElementById("background").style.backgroundImage = data.background;
+        const bgDiv = document.getElementById("background");
+        bgDiv.style.backgroundImage = data.background;
+        bgDiv.style.backgroundColor = 'transparent';
       }
     }
 
@@ -423,10 +438,14 @@
     function exportPNG() {
       document.getElementById("controls").style.display = "none";
       document.getElementById("menuToggle").style.display = "none";
-      html2canvas(document.getElementById("tierlist"), { scale: 2 }).then(canvas => {
+      html2canvas(document.getElementById("tierlist"), { 
+        scale: 4,
+        useCORS: true,
+        logging: false
+      }).then(canvas => {
         const a = document.createElement("a");
         a.download = "tierlist.png";
-        a.href = canvas.toDataURL("image/png");
+        a.href = canvas.toDataURL("image/png", 1.0);
         a.click();
         document.getElementById("controls").style.display = "flex";
         document.getElementById("menuToggle").style.display = window.innerWidth <= 600 ? "block" : "none";
@@ -436,8 +455,12 @@
     function exportPDF() {
       document.getElementById("controls").style.display = "none";
       document.getElementById("menuToggle").style.display = "none";
-      html2canvas(document.getElementById("tierlist"), { scale: 2 }).then(canvas => {
-        const imgData = canvas.toDataURL("image/png");
+      html2canvas(document.getElementById("tierlist"), { 
+        scale: 4,
+        useCORS: true,
+        logging: false
+      }).then(canvas => {
+        const imgData = canvas.toDataURL("image/png", 1.0);
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({
           orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
@@ -449,7 +472,7 @@
         const imgWidth = canvas.width * 0.264583;
         const imgHeight = canvas.height * 0.264583;
         const scale = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth * scale, imgHeight * scale);
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth * scale, imgHeight * scale, null, 'SLOW');
         pdf.save("tierlist.pdf");
         document.getElementById("controls").style.display = "flex";
         document.getElementById("menuToggle").style.display = window.innerWidth <= 600 ? "block" : "none";
