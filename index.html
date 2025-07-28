@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Iceberg Tier List</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background: #111;
+      color: #fff;
+      height: 100%;
+      overflow-x: hidden;
+    }
+    body.blurred {
+      filter: blur(5px);
+    }
+    #controls {
+      position: fixed; top: 10px; left: 10px; z-index: 1000;
+      background: rgba(0,0,0,0.7); padding: 10px; border-radius: 8px;
+    }
+    .tier {
+      display: flex;
+      align-items: center;
+      min-height: 100px;
+      margin: 20px;
+      padding: 10px;
+      background-color: rgba(255,255,255,0.1);
+      border: 2px solid #aaa;
+      border-radius: 10px;
+      overflow-x: auto;
+      position: relative;
+    }
+    .tier-label {
+      min-width: 80px;
+      font-weight: bold;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      margin-right: 10px;
+      cursor: move;
+    }
+    .tier-actions {
+      position: absolute;
+      top: 5px; right: 10px;
+      display: flex;
+      gap: 4px;
+    }
+    .image-box {
+      width: 100px; height: 100px; margin: 5px;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      border: 1px solid #fff;
+      position: relative;
+    }
+    .image-box:hover {
+      transform: scale(1.2);
+      z-index: 2;
+    }
+    #tierlist {
+      margin-top: 160px;
+    }
+    select, button, label {
+      margin: 4px;
+    }
+    #modal {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: none; justify-content: center; align-items: center;
+      z-index: 2000;
+    }
+    #modalContent {
+      background: white; color: black;
+      padding: 20px; border-radius: 8px;
+      max-width: 500px; width: 90%;
+    }
+    #modalContent img {
+      max-width: 100%; max-height: 300px;
+    }
+    .tier-container {
+      display: flex;
+      flex-direction: column;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <label><input type="file" id="uploadImage" accept="image/*" style="display:none;"/>📤 Upload Image</label>
+    <button onclick="document.getElementById('uploadImage').click()">📤</button>
+    <button onclick="addTier()">➕ Add Tier</button>
+    <button onclick="toggleTheme()">🎨 Theme</button>
+    <button onclick="toggleBlur()">🌀 Blur</button>
+    <button onclick="uploadBackground()">🌄 Background</button>
+    <button onclick="saveData()">💾 Save JSON</button>
+    <button onclick="loadData()">📂 Load JSON</button>
+    <button onclick="exportURL()">🔗 Share URL</button>
+    <button onclick="exportPNG()">🖼️ PNG</button>
+    <button onclick="exportPDF()">📄 PDF</button>
+    <input type="file" id="loadFile" accept="application/json" style="display:none;">
+  </div>
+
+  <div class="tier-container" id="tierlist"></div>
+
+  <div id="modal">
+    <div id="modalContent">
+      <h3>Edit Image Info</h3>
+      <img id="modalImg" />
+      <input id="modalTitle" placeholder="Title" /><br />
+      <textarea id="modalDesc" placeholder="Description"></textarea><br />
+      <button onclick="closeModal()">Close</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lz-string@1.4.4/libs/lz-string.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script>
+    let tiers = [];
+    let currentImageBox = null;
+
+    function addTier(name = "New Tier", color = "#222") {
+      const tierList = document.getElementById("tierlist");
+      const tier = document.createElement("div");
+      tier.className = "tier";
+      tier.dataset.color = color;
+      const label = document.createElement("div");
+      label.className = "tier-label";
+      label.contentEditable = true;
+      label.innerText = name;
+      tier.appendChild(label);
+
+      const tierActions = document.createElement("div");
+      tierActions.className = "tier-actions";
+      tierActions.innerHTML = `<button onclick="this.closest('.tier').remove()">🗑️</button>`;
+      tier.appendChild(tierActions);
+
+      tierList.appendChild(tier);
+      new Sortable(tier, {
+        group: "shared",
+        animation: 150,
+        ghostClass: "sortable-ghost",
+        onEnd: saveToURL
+      });
+      new Sortable(tierList, {
+        handle: ".tier-label",
+        animation: 150,
+        onEnd: saveToURL
+      });
+    }
+
+    function handleImageUpload(event) {
+      const file = event.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const imageBox = document.createElement("div");
+        imageBox.className = "image-box";
+        imageBox.style.backgroundImage = `url(${e.target.result})`;
+        imageBox.dataset.src = e.target.result;
+        imageBox.onclick = () => openModal(imageBox);
+        document.querySelector(".tier:last-child").appendChild(imageBox);
+      };
+      if (file) reader.readAsDataURL(file);
+    }
+
+    function openModal(imageBox) {
+      currentImageBox = imageBox;
+      document.getElementById("modalImg").src = imageBox.dataset.src;
+      document.getElementById("modalTitle").value = imageBox.dataset.title || "";
+      document.getElementById("modalDesc").value = imageBox.dataset.desc || "";
+      document.getElementById("modal").style.display = "flex";
+    }
+
+    function closeModal() {
+      currentImageBox.dataset.title = document.getElementById("modalTitle").value;
+      currentImageBox.dataset.desc = document.getElementById("modalDesc").value;
+      document.getElementById("modal").style.display = "none";
+    }
+
+    document.getElementById("uploadImage").addEventListener("change", handleImageUpload);
+
+    function toggleTheme() {
+      document.body.classList.toggle("dark-theme");
+    }
+
+    function toggleBlur() {
+      document.body.classList.toggle("blurred");
+    }
+
+    function uploadBackground() {
+      const url = prompt("Enter background image URL:");
+      if (url) document.body.style.backgroundImage = `url('${url}')`;
+    }
+
+    function saveData() {
+      const data = exportState();
+      const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "tierlist.json";
+      a.click();
+    }
+
+    function loadData() {
+      document.getElementById("loadFile").click();
+    }
+
+    document.getElementById("loadFile").addEventListener("change", function(evt) {
+      const file = evt.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = JSON.parse(e.target.result);
+        importState(data);
+      };
+      if (file) reader.readAsText(file);
+    });
+
+    function exportState() {
+      const tiers = Array.from(document.querySelectorAll(".tier")).map(tier => ({
+        label: tier.querySelector(".tier-label").innerText,
+        color: tier.dataset.color,
+        images: Array.from(tier.querySelectorAll(".image-box")).map(img => ({
+          src: img.dataset.src,
+          title: img.dataset.title || "",
+          desc: img.dataset.desc || ""
+        }))
+      }));
+      return { tiers };
+    }
+
+    function importState(data) {
+      document.getElementById("tierlist").innerHTML = "";
+      data.tiers.forEach(t => {
+        addTier(t.label, t.color);
+        const lastTier = document.querySelector(".tier:last-child");
+        t.images.forEach(i => {
+          const box = document.createElement("div");
+          box.className = "image-box";
+          box.style.backgroundImage = `url(${i.src})`;
+          box.dataset.src = i.src;
+          box.dataset.title = i.title;
+          box.dataset.desc = i.desc;
+          box.onclick = () => openModal(box);
+          lastTier.appendChild(box);
+        });
+      });
+    }
+
+    function exportURL() {
+      const data = LZString.compressToEncodedURIComponent(JSON.stringify(exportState()));
+      prompt("Shareable URL:", `${location.origin}${location.pathname}#${data}`);
+    }
+
+    function exportPNG() {
+      html2canvas(document.getElementById("tierlist"), { scale: 2 }).then(canvas => {
+        const a = document.createElement("a");
+        a.download = "tierlist.png";
+        a.href = canvas.toDataURL();
+        a.click();
+      });
+    }
+
+    function exportPDF() {
+      html2canvas(document.getElementById("tierlist"), { scale: 2 }).then(canvas => {
+        const img = canvas.toDataURL("image/png");
+        const pdf = new jspdf.jsPDF({ orientation: 'portrait', unit: 'px', format: [canvas.width, canvas.height] });
+        pdf.addImage(img, 'PNG', 0, 0);
+        pdf.save("tierlist.pdf");
+      });
+    }
+
+    // Auto-load from URL hash
+    if (location.hash.length > 1) {
+      const data = JSON.parse(LZString.decompressFromEncodedURIComponent(location.hash.slice(1)));
+      importState(data);
+    } else {
+      addTier("Top");
+      addTier("Middle");
+      addTier("Bottom");
+    }
+  </script>
+</body>
+</html>
