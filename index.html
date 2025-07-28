@@ -23,6 +23,7 @@
       height: 100%;
       background-size: cover;
       background-position: center;
+      background-color: #2a2a2a; /* Fallback color */
       z-index: -1;
       transition: filter 0.3s;
     }
@@ -40,9 +41,6 @@
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-    }
-    #controls.hidden {
-      display: none;
     }
     #menuToggle {
       display: none;
@@ -210,7 +208,7 @@
 <body>
   <div id="background"></div>
   <button id="menuToggle" onclick="toggleMenu()">☰</button>
-  <div id="controls" class="hidden">
+  <div id="controls">
     <label><input type="file" id="uploadImage" accept="image/*" multiple style="display:none;"/>📤 Upload Images</label>
     <button onclick="document.getElementById('uploadImage').click()">📤</button>
     <button onclick="addTier()">➕ Add Tier</button>
@@ -303,6 +301,7 @@
       const reader = new FileReader();
       reader.onload = function(e) {
         document.getElementById("background").style.backgroundImage = `url(${e.target.result})`;
+        saveToURL();
       };
       reader.readAsDataURL(file);
     }
@@ -329,10 +328,11 @@
 
     function toggleTheme() {
       document.body.classList.toggle("light-theme");
-      document.body.style.backgroundColor = document.body.classList.contains("light-theme") ? "#f0f0f0" : "#1a1a1a";
-      document.getElementById("background").style.backgroundColor = document.body.classList.contains("light-theme") ? "#fff" : "#1a1a1a";
+      const isLight = document.body.classList.contains("light-theme");
+      document.body.style.backgroundColor = isLight ? "#f0f0f0" : "#1a1a1a";
+      document.getElementById("background").style.backgroundColor = isLight ? "#fff" : "#2a2a2a";
       document.querySelectorAll(".tier").forEach(tier => {
-        tier.style.background = document.body.classList.contains("light-theme") ? "rgba(0, 0, 0, 0.1)" : "rgba(255, 255, 255, 0.15)";
+        tier.style.background = isLight ? "rgba(0, 0, 0, 0.1)" : "rgba(255, 255, 255, 0.15)";
       });
     }
 
@@ -341,8 +341,9 @@
     }
 
     function toggleMenu() {
-      document.getElementById("controls").classList.toggle("hidden");
-      document.getElementById("controls").classList.toggle("active");
+      const controls = document.getElementById("controls");
+      controls.classList.toggle("active");
+      controls.style.display = controls.classList.contains("active") ? "flex" : "none";
     }
 
     function saveData() {
@@ -420,18 +421,21 @@
     }
 
     function exportPNG() {
-      document.getElementById("controls").classList.add("hidden");
+      document.getElementById("controls").style.display = "none";
+      document.getElementById("menuToggle").style.display = "none";
       html2canvas(document.getElementById("tierlist"), { scale: 2 }).then(canvas => {
         const a = document.createElement("a");
         a.download = "tierlist.png";
         a.href = canvas.toDataURL("image/png");
         a.click();
-        document.getElementById("controls").classList.remove("hidden");
+        document.getElementById("controls").style.display = "flex";
+        document.getElementById("menuToggle").style.display = window.innerWidth <= 600 ? "block" : "none";
       }).catch(e => alert("Error exporting PNG: " + e.message));
     }
 
     function exportPDF() {
-      document.getElementById("controls").classList.add("hidden");
+      document.getElementById("controls").style.display = "none";
+      document.getElementById("menuToggle").style.display = "none";
       html2canvas(document.getElementById("tierlist"), { scale: 2 }).then(canvas => {
         const imgData = canvas.toDataURL("image/png");
         const { jsPDF } = window.jspdf;
@@ -442,12 +446,13 @@
         });
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = canvas.width * 0.264583; // px to mm
+        const imgWidth = canvas.width * 0.264583;
         const imgHeight = canvas.height * 0.264583;
         const scale = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
         pdf.addImage(imgData, 'PNG', 0, 0, imgWidth * scale, imgHeight * scale);
         pdf.save("tierlist.pdf");
-        document.getElementById("controls").classList.remove("hidden");
+        document.getElementById("controls").style.display = "flex";
+        document.getElementById("menuToggle").style.display = window.innerWidth <= 600 ? "block" : "none";
       }).catch(e => alert("Error exporting PDF: " + e.message));
     }
 
@@ -467,6 +472,22 @@
       addTier("Middle");
       addTier("Bottom");
     }
+
+    // Ensure controls visibility based on screen size
+    window.addEventListener("resize", () => {
+      const controls = document.getElementById("controls");
+      const menuToggle = document.getElementById("menuToggle");
+      if (window.innerWidth > 600) {
+        controls.style.display = "flex";
+        controls.classList.remove("active");
+        menuToggle.style.display = "none";
+      } else {
+        controls.style.display = controls.classList.contains("active") ? "flex" : "none";
+        menuToggle.style.display = "block";
+      }
+    });
+    // Trigger initial visibility
+    window.dispatchEvent(new Event("resize"));
   </script>
 </body>
 </html>
