@@ -2,96 +2,222 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Iceberg Tier List</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
-      font-family: sans-serif;
-      background: #111;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a1a;
       color: #fff;
       height: 100%;
       overflow-x: hidden;
+      position: relative;
     }
-    body.blurred {
+    #background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      z-index: -1;
+      transition: filter 0.3s;
+    }
+    #background.blurred {
       filter: blur(5px);
     }
     #controls {
-      position: fixed; top: 10px; left: 10px; z-index: 1000;
-      background: rgba(0,0,0,0.7); padding: 10px; border-radius: 8px;
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 10px;
+      border-radius: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    #controls.hidden {
+      display: none;
+    }
+    #menuToggle {
+      display: none;
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 1100;
+      font-size: 1.5rem;
+      background: rgba(0, 0, 0, 0.8);
+      border: none;
+      color: #fff;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
     }
     .tier {
       display: flex;
       align-items: center;
-      min-height: 100px;
-      margin: 20px;
+      min-height: 120px;
+      margin: 15px;
       padding: 10px;
-      background-color: rgba(255,255,255,0.1);
-      border: 2px solid #aaa;
-      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.15);
+      border: 2px solid #555;
+      border-radius: 12px;
       overflow-x: auto;
       position: relative;
+      transition: transform 0.2s;
     }
     .tier-label {
-      min-width: 80px;
+      min-width: 60px;
       font-weight: bold;
       writing-mode: vertical-rl;
       text-orientation: mixed;
       margin-right: 10px;
+      padding: 5px;
       cursor: move;
+      font-size: 1rem;
+      background: #333;
+      border-radius: 6px;
     }
     .tier-actions {
       position: absolute;
-      top: 5px; right: 10px;
+      top: 5px;
+      right: 10px;
       display: flex;
-      gap: 4px;
+      gap: 6px;
     }
     .image-box {
-      width: 100px; height: 100px; margin: 5px;
+      width: 100px;
+      height: 100px;
+      margin: 5px;
       background-size: contain;
       background-repeat: no-repeat;
       background-position: center;
       border: 1px solid #fff;
+      border-radius: 6px;
       position: relative;
+      transition: transform 0.2s;
     }
     .image-box:hover {
-      transform: scale(1.2);
+      transform: scale(1.1);
       z-index: 2;
     }
     #tierlist {
-      margin-top: 160px;
+      margin-top: 80px;
+      padding-bottom: 20px;
     }
-    select, button, label {
-      margin: 4px;
+    button, label {
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      border: none;
+      border-radius: 6px;
+      background: #444;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover, label:hover {
+      background: #666;
     }
     #modal {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      display: none; justify-content: center; align-items: center;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
       z-index: 2000;
     }
     #modalContent {
-      background: white; color: black;
-      padding: 20px; border-radius: 8px;
-      max-width: 500px; width: 90%;
+      background: #222;
+      color: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      width: 400px;
     }
     #modalContent img {
-      max-width: 100%; max-height: 300px;
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 8px;
+    }
+    #modalTitle, #modalDesc {
+      width: 100%;
+      margin: 10px 0;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #555;
+      background: #333;
+      color: #fff;
+    }
+    #modalDesc {
+      min-height: 80px;
+      resize: vertical;
     }
     .tier-container {
       display: flex;
       flex-direction: column;
     }
+    @media (max-width: 600px) {
+      #controls {
+        display: none;
+      }
+      #controls.active {
+        display: flex;
+        flex-direction: column;
+        width: 200px;
+        left: 10px;
+        top: 50px;
+      }
+      #menuToggle {
+        display: block;
+      }
+      .tier {
+        min-height: 100px;
+        margin: 10px;
+      }
+      .tier-label {
+        min-width: 50px;
+        font-size: 0.9rem;
+      }
+      .image-box {
+        width: 80px;
+        height: 80px;
+      }
+      #tierlist {
+        margin-top: 60px;
+      }
+      button, label {
+        padding: 10px;
+        font-size: 1rem;
+      }
+      #modalContent {
+        width: 90%;
+        max-height: 90vh;
+      }
+    }
   </style>
 </head>
 <body>
-  <div id="controls">
-    <label><input type="file" id="uploadImage" accept="image/*" style="display:none;"/>📤 Upload Image</label>
+  <div id="background"></div>
+  <button id="menuToggle" onclick="toggleMenu()">☰</button>
+  <div id="controls" class="hidden">
+    <label><input type="file" id="uploadImage" accept="image/*" multiple style="display:none;"/>📤 Upload Images</label>
     <button onclick="document.getElementById('uploadImage').click()">📤</button>
     <button onclick="addTier()">➕ Add Tier</button>
     <button onclick="toggleTheme()">🎨 Theme</button>
-    <button onclick="toggleBlur()">🌀 Blur</button>
-    <button onclick="uploadBackground()">🌄 Background</button>
+    <button onclick="toggleBlur()">🌀 Blur Background</button>
+    <label><input type="file" id="uploadBackground" accept="image/*" style="display:none;"/>🌄 Background</label>
+    <button onclick="document.getElementById('uploadBackground').click()">🌄</button>
     <button onclick="saveData()">💾 Save JSON</button>
     <button onclick="loadData()">📂 Load JSON</button>
     <button onclick="exportURL()">🔗 Share URL</button>
@@ -106,8 +232,8 @@
     <div id="modalContent">
       <h3>Edit Image Info</h3>
       <img id="modalImg" />
-      <input id="modalTitle" placeholder="Title" /><br />
-      <textarea id="modalDesc" placeholder="Description"></textarea><br />
+      <input id="modalTitle" placeholder="Title" />
+      <textarea id="modalDesc" placeholder="Description"></textarea>
       <button onclick="closeModal()">Close</button>
     </div>
   </div>
@@ -134,7 +260,7 @@
 
       const tierActions = document.createElement("div");
       tierActions.className = "tier-actions";
-      tierActions.innerHTML = `<button onclick="this.closest('.tier').remove()">🗑️</button>`;
+      tierActions.innerHTML = `<button onclick="this.closest('.tier').remove(); saveToURL()">🗑️</button>`;
       tier.appendChild(tierActions);
 
       tierList.appendChild(tier);
@@ -149,20 +275,36 @@
         animation: 150,
         onEnd: saveToURL
       });
+      saveToURL();
     }
 
     function handleImageUpload(event) {
+      const files = Array.from(event.target.files);
+      if (files.length === 0) return;
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const imageBox = document.createElement("div");
+          imageBox.className = "image-box";
+          imageBox.style.backgroundImage = `url(${e.target.result})`;
+          imageBox.dataset.src = e.target.result;
+          imageBox.onclick = () => openModal(imageBox);
+          const lastTier = document.querySelector(".tier:last-child") || document.querySelector(".tier") || addTier();
+          lastTier.appendChild(imageBox);
+          saveToURL();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function handleBackgroundUpload(event) {
       const file = event.target.files[0];
+      if (!file) return;
       const reader = new FileReader();
       reader.onload = function(e) {
-        const imageBox = document.createElement("div");
-        imageBox.className = "image-box";
-        imageBox.style.backgroundImage = `url(${e.target.result})`;
-        imageBox.dataset.src = e.target.result;
-        imageBox.onclick = () => openModal(imageBox);
-        document.querySelector(".tier:last-child").appendChild(imageBox);
+        document.getElementById("background").style.backgroundImage = `url(${e.target.result})`;
       };
-      if (file) reader.readAsDataURL(file);
+      reader.readAsDataURL(file);
     }
 
     function openModal(imageBox) {
@@ -174,33 +316,46 @@
     }
 
     function closeModal() {
-      currentImageBox.dataset.title = document.getElementById("modalTitle").value;
-      currentImageBox.dataset.desc = document.getElementById("modalDesc").value;
+      if (currentImageBox) {
+        currentImageBox.dataset.title = document.getElementById("modalTitle").value;
+        currentImageBox.dataset.desc = document.getElementById("modalDesc").value;
+      }
       document.getElementById("modal").style.display = "none";
+      saveToURL();
     }
 
     document.getElementById("uploadImage").addEventListener("change", handleImageUpload);
+    document.getElementById("uploadBackground").addEventListener("change", handleBackgroundUpload);
 
     function toggleTheme() {
-      document.body.classList.toggle("dark-theme");
+      document.body.classList.toggle("light-theme");
+      document.body.style.backgroundColor = document.body.classList.contains("light-theme") ? "#f0f0f0" : "#1a1a1a";
+      document.getElementById("background").style.backgroundColor = document.body.classList.contains("light-theme") ? "#fff" : "#1a1a1a";
+      document.querySelectorAll(".tier").forEach(tier => {
+        tier.style.background = document.body.classList.contains("light-theme") ? "rgba(0, 0, 0, 0.1)" : "rgba(255, 255, 255, 0.15)";
+      });
     }
 
     function toggleBlur() {
-      document.body.classList.toggle("blurred");
+      document.getElementById("background").classList.toggle("blurred");
     }
 
-    function uploadBackground() {
-      const url = prompt("Enter background image URL:");
-      if (url) document.body.style.backgroundImage = `url('${url}')`;
+    function toggleMenu() {
+      document.getElementById("controls").classList.toggle("hidden");
+      document.getElementById("controls").classList.toggle("active");
     }
 
     function saveData() {
-      const data = exportState();
-      const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "tierlist.json";
-      a.click();
+      try {
+        const data = exportState();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "tierlist.json";
+        a.click();
+      } catch (e) {
+        alert("Error saving JSON: " + e.message);
+      }
     }
 
     function loadData() {
@@ -209,25 +364,33 @@
 
     document.getElementById("loadFile").addEventListener("change", function(evt) {
       const file = evt.target.files[0];
+      if (!file) return;
       const reader = new FileReader();
       reader.onload = function(e) {
-        const data = JSON.parse(e.target.result);
-        importState(data);
+        try {
+          const data = JSON.parse(e.target.result);
+          importState(data);
+          saveToURL();
+        } catch (e) {
+          alert("Error loading JSON: Invalid file format.");
+        }
       };
-      if (file) reader.readAsText(file);
+      reader.readAsText(file);
     });
 
     function exportState() {
-      const tiers = Array.from(document.querySelectorAll(".tier")).map(tier => ({
-        label: tier.querySelector(".tier-label").innerText,
-        color: tier.dataset.color,
-        images: Array.from(tier.querySelectorAll(".image-box")).map(img => ({
-          src: img.dataset.src,
-          title: img.dataset.title || "",
-          desc: img.dataset.desc || ""
-        }))
-      }));
-      return { tiers };
+      return {
+        tiers: Array.from(document.querySelectorAll(".tier")).map(tier => ({
+          label: tier.querySelector(".tier-label").innerText,
+          color: tier.dataset.color,
+          images: Array.from(tier.querySelectorAll(".image-box")).map(img => ({
+            src: img.dataset.src,
+            title: img.dataset.title || "",
+            desc: img.dataset.desc || ""
+          }))
+        })),
+        background: document.getElementById("background").style.backgroundImage
+      };
     }
 
     function importState(data) {
@@ -246,35 +409,59 @@
           lastTier.appendChild(box);
         });
       });
+      if (data.background) {
+        document.getElementById("background").style.backgroundImage = data.background;
+      }
     }
 
-    function exportURL() {
+    function saveToURL() {
       const data = LZString.compressToEncodedURIComponent(JSON.stringify(exportState()));
-      prompt("Shareable URL:", `${location.origin}${location.pathname}#${data}`);
+      history.replaceState(null, "", `#${data}`);
     }
 
     function exportPNG() {
+      document.getElementById("controls").classList.add("hidden");
       html2canvas(document.getElementById("tierlist"), { scale: 2 }).then(canvas => {
         const a = document.createElement("a");
         a.download = "tierlist.png";
-        a.href = canvas.toDataURL();
+        a.href = canvas.toDataURL("image/png");
         a.click();
-      });
+        document.getElementById("controls").classList.remove("hidden");
+      }).catch(e => alert("Error exporting PNG: " + e.message));
     }
 
     function exportPDF() {
+      document.getElementById("controls").classList.add("hidden");
       html2canvas(document.getElementById("tierlist"), { scale: 2 }).then(canvas => {
-        const img = canvas.toDataURL("image/png");
-        const pdf = new jspdf.jsPDF({ orientation: 'portrait', unit: 'px', format: [canvas.width, canvas.height] });
-        pdf.addImage(img, 'PNG', 0, 0);
+        const imgData = canvas.toDataURL("image/png");
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+          orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = canvas.width * 0.264583; // px to mm
+        const imgHeight = canvas.height * 0.264583;
+        const scale = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth * scale, imgHeight * scale);
         pdf.save("tierlist.pdf");
-      });
+        document.getElementById("controls").classList.remove("hidden");
+      }).catch(e => alert("Error exporting PDF: " + e.message));
     }
 
     // Auto-load from URL hash
     if (location.hash.length > 1) {
-      const data = JSON.parse(LZString.decompressFromEncodedURIComponent(location.hash.slice(1)));
-      importState(data);
+      try {
+        const data = JSON.parse(LZString.decompressFromEncodedURIComponent(location.hash.slice(1)));
+        importState(data);
+      } catch (e) {
+        console.error("Error loading from URL:", e);
+        addTier("Top");
+        addTier("Middle");
+        addTier("Bottom");
+      }
     } else {
       addTier("Top");
       addTier("Middle");
